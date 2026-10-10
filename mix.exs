@@ -1,12 +1,13 @@
 defmodule Toml.MixProject do
   use Mix.Project
 
+  @app :tomlex
   @version "0.7.0"
-  @source_url "https://github.com/bitwalker/toml-elixir"
+  @source_url "https://github.com/am-kantox/toml"
 
   def project do
     [
-      app: :toml,
+      app: @app,
       version: @version,
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
@@ -63,7 +64,7 @@ defmodule Toml.MixProject do
   defp package do
     [
       files: ["lib", "mix.exs", "README.md", "LICENSE"],
-      maintainers: ["Paul Schoenfelder"],
+      maintainers: ["Paul Schoenfelder", "Aleksei Matiushkin"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @source_url}
     ]
