@@ -63,7 +63,7 @@ defmodule Toml.Provider do
           Keyword.put(opts, :keys, :atoms)
       end
 
-    if is_distillery_env?() do
+    if distillery_env?() do
       # When running under Distillery, init performs load
       load([], opts)
       opts
@@ -79,10 +79,11 @@ defmodule Toml.Provider do
     # path expansion should happen in load rather than init, otherwise
     # in 1.9 releases using a {:system, env_var, path} tuple an error
     # will be raised if the env var is not set in the build environment
-    with {:ok, path} <- expand_path(path) do
-      map = Toml.decode_file!(path, opts)
-      persist(config, to_keyword(map))
-    else
+    case expand_path(path) do
+      {:ok, path} ->
+        map = Toml.decode_file!(path, opts)
+        persist(config, to_keyword(map))
+
       {:error, reason} ->
         exit(reason)
     end
@@ -211,7 +212,7 @@ defmodule Toml.Provider do
     expand_var(rest, <<acc::binary, c::utf8>>)
   end
 
-  defp is_distillery_env? do
+  defp distillery_env? do
     if Version.match?(Version.parse!(System.version()), ">= 1.9.0") do
       Code.ensure_loaded?(Distillery.Releases.Config.Provider)
     else

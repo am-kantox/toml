@@ -1,8 +1,8 @@
 defmodule Toml.Decoder do
   @moduledoc false
 
-  alias Toml.Document
   alias Toml.Builder
+  alias Toml.Document
   alias Toml.Lexer
 
   @compile :inline_list_funs
@@ -104,9 +104,8 @@ defmodule Toml.Decoder do
   """
   @spec decode_file!(String.t(), Toml.opts()) :: map | no_return
   def decode_file!(path, opts) when is_binary(path) do
-    with {:ok, opts} <- set_filename_opt(opts, path),
-         bin = File.read!(path) do
-      decode!(bin, opts)
+    with {:ok, opts} <- set_filename_opt(opts, path) do
+      decode!(File.read!(path), opts)
     end
   end
 
@@ -493,9 +492,10 @@ defmodule Toml.Decoder do
         # Just an integer
         Lexer.push(lexer, token)
 
-        with {:ok, _} = result <- iodata_to_integer(parts) do
-          result
-        else
+        case iodata_to_integer(parts) do
+          {:ok, _} = result ->
+            result
+
           {:error, reason} ->
             {:error, reason, skip, lines}
         end
@@ -521,10 +521,11 @@ defmodule Toml.Decoder do
 
       {:ok, {?_, skip, _, lines}} when last not in ~c"_e." ->
         # Valid only when surrounded by digits
-        with {:ok, {:digits, _, d, _}} <- Lexer.peek(lexer),
-             _ = Lexer.advance(lexer) do
-          float(lexer, signal, [d | parts])
-        else
+        case Lexer.peek(lexer) do
+          {:ok, {:digits, _, d, _}} ->
+            _ = Lexer.advance(lexer)
+            float(lexer, signal, [d | parts])
+
           {:error, _, _, _} = err ->
             err
 
@@ -543,9 +544,10 @@ defmodule Toml.Decoder do
         # Done
         Lexer.push(lexer, token)
 
-        with {:ok, _} = result <- iodata_to_float(parts) do
-          result
-        else
+        case iodata_to_float(parts) do
+          {:ok, _} = result ->
+            result
+
           {:error, reason} ->
             {:error, reason, skip, lines}
         end
@@ -671,65 +673,54 @@ defmodule Toml.Decoder do
     {:ok, skip, lines} = Lexer.pos(lexer)
     # Convert parts to string
     datestr = iodata_to_str(parts)
-    # At this point we have at least YYYY-mm-dd and a fully decoded time
-    with {_, {:ok, date}} <- {:date, Date.from_iso8601(datestr)},
-         {_, {:ok, naive}} <- {:datetime, NaiveDateTime.new(date, time)} do
-      # We just need to check for Z or UTC offset
-      case Lexer.pop(lexer) do
-        {:ok, {:alpha, _, "Z", _}} ->
-          DateTime.from_naive(naive, "Etc/UTC")
 
-        {:ok, {sign, _, _, _}} when sign in ~c"-+" ->
-          # We have an offset
-          with {:ok, {:digits, _, <<_::utf8, _::utf8>> = hh, _}} <- Lexer.pop(lexer),
-               {:ok, {?:, _, _, _}} <- Lexer.pop(lexer),
-               {:ok, {:digits, _, <<_::utf8, _::utf8>> = mm, _}} <- Lexer.pop(lexer) do
-            # Shift naive to account for offset
-            hours = String.to_integer(hh)
-            mins = String.to_integer(mm)
-            offset = hours * 60 * 60 + mins * 60
-
-            naive =
-              case sign do
-                ?- ->
-                  NaiveDateTime.add(naive, offset * -1, :second)
-
-                ?+ ->
-                  NaiveDateTime.add(naive, offset, :second)
-              end
-
-            DateTime.from_naive(naive, "Etc/UTC")
-          else
-            {:error, _, _, _} = err ->
-              err
-
-            {:ok, {type, skip, data, lines}} ->
-              {:error, {:invalid_datetime_offset, {type, data}}, skip, lines}
-          end
-
-        {:ok, {type, _, _, _} = token} when type in [:eof, :whitespace, :newline] ->
-          # Just a local date/time
-          Lexer.push(lexer, token)
-          {:ok, naive}
-      end
-    else
-      {:date, {:error, :invalid_date}} ->
+    case Date.from_iso8601(datestr) do
+      {:error, :invalid_date} ->
         {:error, {:invalid_date, datestr}, skip, lines}
 
-      {:date, {:error, reason}} ->
+      {:error, reason} ->
         {:error, {:invalid_date, reason, datestr}, skip, lines}
 
-      {:datetime, {:error, :invalid_date}} ->
-        {:error, {:invalid_datetime, {datestr, time}}, skip, lines}
+      {:ok, date} ->
+        {:ok, naive} = NaiveDateTime.new(date, time)
 
-      {:datetime, {:error, reason}} ->
-        {:error, {:invalid_date, reason, {datestr, time}}, skip, lines}
+        case Lexer.pop(lexer) do
+          {:ok, {:alpha, _, "Z", _}} ->
+            DateTime.from_naive(naive, "Etc/UTC")
 
-      {:error, _, _, _} = err ->
-        err
+          {:ok, {sign, _, _, _}} when sign in ~c"-+" ->
+            # We have an offset
+            with {:ok, {:digits, _, <<_::utf8, _::utf8>> = hh, _}} <- Lexer.pop(lexer),
+                 {:ok, {?:, _, _, _}} <- Lexer.pop(lexer),
+                 {:ok, {:digits, _, <<_::utf8, _::utf8>> = mm, _}} <- Lexer.pop(lexer) do
+              # Shift naive to account for offset
+              hours = String.to_integer(hh)
+              mins = String.to_integer(mm)
+              offset = hours * 60 * 60 + mins * 60
 
-      {:ok, {type, skip, data, lines}} ->
-        {:error, {:invalid_token, {type, data}}, skip, lines}
+              naive =
+                case sign do
+                  ?- ->
+                    NaiveDateTime.add(naive, offset * -1, :second)
+
+                  ?+ ->
+                    NaiveDateTime.add(naive, offset, :second)
+                end
+
+              DateTime.from_naive(naive, "Etc/UTC")
+            else
+              {:error, _, _, _} = err ->
+                err
+
+              {:ok, {type, skip, data, lines}} ->
+                {:error, {:invalid_datetime_offset, {type, data}}, skip, lines}
+            end
+
+          {:ok, {type, _, _, _} = token} when type in [:eof, :whitespace, :newline] ->
+            # Just a local date/time
+            Lexer.push(lexer, token)
+            {:ok, naive}
+        end
     end
   end
 
@@ -750,13 +741,7 @@ defmodule Toml.Decoder do
         value(lexer)
 
       {:ok, {?\[, _skip, _, _lines}} ->
-        # Need to embellish some errors with line/col
-        with {:ok, _} = ok <- array(lexer) do
-          ok
-        else
-          {:error, _, _, _} = err ->
-            err
-        end
+        array(lexer)
 
       {:ok, {?\{, _, _, _}} ->
         inline_table(lexer)
@@ -814,14 +799,11 @@ defmodule Toml.Decoder do
       {:error, _, _, _} = err ->
         err
 
-      {:close, {:error, _, _, _} = err} ->
+      {:close, _, {:error, _, _, _} = err} ->
         err
 
       {:close, {_oline, _ocol} = opened, {:ok, {_, eskip, _, elines}}} ->
         {:error, {:unclosed_array, opened}, eskip, elines}
-
-      {:valid?, err} ->
-        err
     end
   end
 
@@ -834,7 +816,7 @@ defmodule Toml.Decoder do
       {:error, _, _, _} = err ->
         err
 
-      {:close, {:error, _, _, _} = err} ->
+      {:close, _, {:error, _, _, _} = err} ->
         err
 
       {:close, {_oskip, _olines} = opened, {:ok, {_, eskip, _, elines}}} ->

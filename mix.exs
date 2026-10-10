@@ -8,52 +8,55 @@ defmodule Toml.MixProject do
     [
       app: :toml,
       version: @version,
-      elixir: "~> 1.9",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
-      consolidate_protocols: Mix.env() != :test,
+      consolidate_protocols: Mix.env() not in [:dev, :test],
       description: "An implementation of TOML for Elixir projects",
       package: package(),
       deps: deps(),
       aliases: aliases(Mix.env()),
-      preferred_cli_env: [
+      dialyzer: dialyzer(),
+      docs: docs(),
+      elixirc_paths: elixirc_paths(Mix.env()),
+      escript: escript(),
+      test_coverage: [tool: ExCoveralls]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
         bench: :bench,
         "bench.decoder": :bench,
         "bench.lexer": :bench,
         docs: :docs,
         "hex.publish": :docs,
         coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
         "coveralls.html": :test,
-        "coveralls.details": :test
-      ],
-      dialyzer: dialyzer(),
-      docs: docs(),
-      elixirc_paths: elixirc_paths(Mix.env()),
-      escript: escript(Mix.env()),
-      test_coverage: [tool: ExCoveralls]
+        "coveralls.json": :test
+      ]
     ]
   end
 
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: []
+      extra_applications: [:logger]
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ex_doc, ">= 0.0.0", only: [:docs]},
-      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:benchee, "~> 1.0", only: [:bench]},
-      {:benchee_html, "~> 1.0", only: [:bench]},
-      {:jason, "~> 1.0", only: [:test, :bench]},
-      {:excoveralls, "~> 0.9", only: [:test]}
-      # For benchmarking, though none of these libraries work at this point
-      # {:tomlex, "~> 0.0.5", only: [:bench]},
-      # {:toml_elixir, "~> 2.0.1", only: [:bench]},
-      # {:jerry, "~> 0.1.4", only: [:bench]},
-      # {:etoml, "~> 0.1.0", only: [:bench]},
+      {:jason, "~> 1.4"},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.18", only: :test, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:benchee, "~> 1.3", only: [:bench]},
+      {:benchee_html, "~> 1.0", only: [:bench]}
     ]
   end
 
@@ -79,18 +82,23 @@ defmodule Toml.MixProject do
     ]
   end
 
-  defp escript(:test) do
+  def escript do
     [
       main_module: Toml.CLI,
-      name: :toml,
-      path: Path.join([__DIR__, "bin", "toml"])
+      name: "toml",
+      embed_elixir: true,
+      app: nil
     ]
   end
 
-  defp escript(_), do: nil
-
   defp aliases(_env) do
     [
+      quality: ["format", "credo --strict", "dialyzer"],
+      "quality.ci": [
+        "format --check-formatted",
+        "credo --strict",
+        "dialyzer"
+      ],
       "compile-check": [
         "compile --warnings-as-errors",
         "format --check-formatted --dry-run",
@@ -109,9 +117,12 @@ defmodule Toml.MixProject do
 
   defp dialyzer do
     [
-      ignore_warnings: "dialyzer.ignore",
-      flags: [:error_handling, :underspecs],
-      plt_core_path: System.get_env("PLT_PATH") || System.get_env("MIX_HOME")
+      plt_file: {:no_warn, ".dialyzer/dialyzer.plt"},
+      plt_add_deps: :app_tree,
+      plt_add_apps: [:mix],
+      plt_core_path: ".dialyzer",
+      list_unused_filters: true,
+      ignore_warnings: ".dialyzer/ignore.exs"
     ]
   end
 

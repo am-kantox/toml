@@ -16,20 +16,18 @@ defmodule Toml.Builder do
   Starts a new table and sets the context for subsequent key/values
   """
   def push_table(%Document{} = doc, keypath) do
-    with {:ok, doc} = push_key(%Document{doc | open_table: nil}, keypath, {:table_decl, %{}}) do
-      # We're explicitly opening a new table
-      doc |> open(keypath) |> to_result()
-    end
+    {:ok, doc} = push_key(%Document{doc | open_table: nil}, keypath, {:table_decl, %{}})
+    # We're explicitly opening a new table
+    doc |> open(keypath) |> to_result()
   end
 
   @doc """
   Starts a new array of tables and sets the context for subsequent key/values
   """
   def push_table_array(%Document{} = doc, keypath) do
-    with {:ok, doc} = push_key(%Document{doc | open_table: nil}, keypath, {:table_array, []}) do
-      # We're explicitly opening a new table
-      doc |> open(keypath) |> to_result()
-    end
+    {:ok, doc} = push_key(%Document{doc | open_table: nil}, keypath, {:table_array, []})
+    # We're explicitly opening a new table
+    doc |> open(keypath) |> to_result()
   end
 
   @doc """

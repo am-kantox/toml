@@ -1,6 +1,6 @@
 # TOML for Elixir
 
-[![Main](https://github.com/bitwalker/toml-elixir/workflows/elixir/badge.svg?branch=main)](https://github.com/bitwalker/toml-elixir/actions?query=workflow%3A%22elixir%22+branch%3Amain)
+[![CI](https://github.com/am-kantox/toml/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/am-kantox/toml/actions/workflows/ci.yml)
 [![Hex.pm Version](https://img.shields.io/hexpm/v/toml.svg?style=flat)](https://hex.pm/packages/toml)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg?style=flat)](https://hexdocs.pm/toml)
 [![Total Download](https://img.shields.io/hexpm/dt/toml.svg?style=flat)](https://hex.pm/packages/toml)

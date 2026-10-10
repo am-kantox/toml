@@ -27,3 +27,12 @@ toml-*.tar
 
 # Ignore generated benchmark output
 /bench/output/
+
+# Generated escript
+/toml
+
+# Dialyzer
+/.dialyzer/*.plt*
+/.dialyzer/dialyzer.plt*
+/.ragex/
+/.yoke/

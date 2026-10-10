@@ -106,8 +106,7 @@ defmodule Toml.Error do
 
   def format_reason({:badarg, option, value, valid}) when is_list(valid) do
     valid =
-      valid
-      |> Enum.map(fn
+      Enum.map_join(valid, ", ", fn
         a when is_atom(a) ->
           "#{inspect(a)}"
 
@@ -117,7 +116,6 @@ defmodule Toml.Error do
         v ->
           "#{inspect(v)}"
       end)
-      |> Enum.join(", ")
 
     "invalid value `#{inspect(value)}` for option #{inspect(option)}; must be one of [#{valid}]"
   end

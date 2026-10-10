@@ -1,0 +1,207 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.20'
+          otp-version: '29'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix deps.get --only prod
+
+      - name: Compile project
+        run: MIX_ENV=prod mix compile
+
+      - name: Build escript
+        run: MIX_ENV=prod mix escript.build
+
+      - name: Build hex archive
+        run: MIX_ENV=prod mix archive.build
+
+      - name: Verify artifacts
+        run: |
+          ls -lh toml toml-*.ez
+          ./toml --version
+          file toml
+          echo "Escript size: $(du -h toml | cut -f1)"
+          echo "Archive size: $(du -h toml-*.ez | cut -f1)"
+
+      - name: Generate checksums
+        run: |
+          sha256sum toml > toml.sha256
+          sha256sum toml-*.ez > toml-archive.sha256
+          cat toml.sha256
+          cat toml-archive.sha256
+
+      - name: Create release notes
+        id: release_notes
+        run: |
+          cat > RELEASE_NOTES.md << 'EOF'
+          ## Installation
+
+          ### Escript (Standalone Binary)
+
+          Download the `toml` binary and install it:
+
+          ```bash
+          # Download
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/toml
+          chmod +x toml
+
+          # Install system-wide
+          sudo mv toml /usr/local/bin/
+
+          # Verify
+          toml --version
+          ```
+
+          ### Hex Archive (Global Mix Task)
+
+          Install directly from Hex:
+
+          ```bash
+          mix archive.install hex toml
+          ```
+
+          Or download and install the archive:
+
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/toml-${{ steps.version.outputs.version }}.ez
+          mix archive.install toml-${{ steps.version.outputs.version }}.ez
+          ```
+
+          ### Mix Dependency
+
+          Add to your `mix.exs`:
+
+          ```elixir
+          def deps do
+            [
+              {:toml, "~> ${{ steps.version.outputs.version }}"}
+            ]
+          end
+          ```
+
+          ## Usage
+
+          ```bash
+          # With escript
+          toml --help
+          toml convert --file config.toml --format json
+          toml validate --file config.toml
+          ```
+
+          ## Verification
+
+          Verify the downloaded files using SHA256 checksums:
+
+          ```bash
+          # Escript
+          sha256sum -c toml.sha256
+
+          # Archive
+          sha256sum -c toml-archive.sha256
+          ```
+
+          ## Documentation
+
+          - [API Documentation](https://hexdocs.pm/toml)
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            toml
+            toml-*.ez
+            toml.sha256
+            toml-archive.sha256
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-hex:
+    name: Publish to Hex.pm
+    runs-on: ubuntu-latest
+    needs: build
+    if: "!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.20'
+          otp-version: '29'
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Publish to Hex
+        run: mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [build, publish-hex]
+    if: always()
+    steps:
+      - name: Check release status
+        run: |
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "Build failed!"
+            exit 1
+          fi
+          
+          if [ "${{ needs.publish-hex.result }}" == "skipped" ]; then
+            echo "Hex publishing skipped (pre-release)"
+          elif [ "${{ needs.publish-hex.result }}" != "success" ]; then
+            echo "Hex publishing failed!"
+            exit 1
+          fi
+          
+          echo "Release completed successfully!"
+          echo "Download artifacts from: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"

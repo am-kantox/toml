@@ -1,31 +1,58 @@
 defmodule Toml.CLI do
-  @moduledoc false
+  @moduledoc """
+  Command-line interface for TOML conversion and validation.
+  """
+
+  @version Mix.Project.config()[:version] || "0.7.0"
 
   defstruct [:callback, :input, :argv, :opts]
 
+  @spec main([String.t()]) :: no_return()
   def main(args) do
-    opts = parse_args!(args)
-    opts.callback.(opts)
-    System.halt(0)
+    case args do
+      ["--version" | _] ->
+        print_version()
+        System.halt(0)
+
+      ["-v" | _] ->
+        print_version()
+        System.halt(0)
+
+      ["version" | _] ->
+        print_version()
+        System.halt(0)
+
+      _ ->
+        opts = parse_args!(args)
+        opts.callback.(opts)
+        System.halt(0)
+    end
+  end
+
+  defp print_version do
+    IO.puts("toml v#{@version}")
   end
 
   ## Convert
   # Perform conversion from TOML content to other formats
   # Currently only supports JSON
 
-  defp convert(%__MODULE__{argv: argv} = config) do
+  defp convert(%__MODULE__{argv: argv}) do
     aliases = [f: :file]
     flags = [file: :string, stdin: :boolean, format: :string, help: :boolean]
     {opts, _} = OptionParser.parse!(argv, aliases: aliases, strict: flags)
+
     # Show help if requested via flag
     if opts[:help] do
-      help(%__MODULE__{config | argv: ["convert"]})
+      help(["convert"])
+      System.halt(0)
     end
 
     # Validate required opts
     if !(opts[:format] && (opts[:file] || opts[:stdin])) do
       warn!("You must provide both --format, and either --file or --stdin")
-      help(%__MODULE__{config | argv: ["convert"]})
+      help(["convert"])
+      System.halt(1)
     end
 
     # Validate format
@@ -47,19 +74,22 @@ defmodule Toml.CLI do
   ## Validate
   # Validate a TOML document
 
-  defp validate(%__MODULE__{argv: argv} = config) do
+  defp validate(%__MODULE__{argv: argv}) do
     aliases = [f: :file]
     flags = [file: :string, stdin: :boolean, help: :boolean, quiet: :boolean]
     {opts, _} = OptionParser.parse!(argv, aliases: aliases, strict: flags)
+
     # Show help if requested
     if opts[:help] do
-      help(%__MODULE__{config | argv: ["validate"]})
+      help(["validate"])
+      System.halt(0)
     end
 
     # Validate required opts
     if !(opts[:file] || opts[:stdin]) do
       warn!("You must provide either --file or --stdin")
-      help(%__MODULE__{config | argv: ["validate"]})
+      help(["validate"])
+      System.halt(1)
     end
 
     # Validate
@@ -90,9 +120,8 @@ defmodule Toml.CLI do
   ## Help
   # Display global help, or command help
 
-  defp help(%__MODULE__{} = config) do
-    help(config.argv)
-    System.halt(2)
+  defp show_help(%__MODULE__{argv: argv}) do
+    help(argv)
   end
 
   defp help([]) do
@@ -104,8 +133,10 @@ defmodule Toml.CLI do
       toml [command] [flags]
       
     Available Commands:
-      convert  Convert TOML content to another format.
-      help     Show help
+      convert   Convert TOML content to another format.
+      validate  Validate TOML content.
+      version   Print version information.
+      help      Show help
     """)
   end
 
@@ -143,6 +174,10 @@ defmodule Toml.CLI do
     """)
   end
 
+  defp help(["version" | _]) do
+    print_version()
+  end
+
   defp help(["help"]) do
     IO.puts("""
     Displays help for toml, or for a specific toml command.
@@ -168,21 +203,33 @@ defmodule Toml.CLI do
     if System.get_env("TOML_TEST") == "true" do
       %__MODULE__{callback: &convert/1, argv: ["--stdin", "--format", "json"], opts: []}
     else
-      {opts, argv} = OptionParser.parse_head!(args, strict: [help: :boolean])
+      {opts, argv} =
+        OptionParser.parse_head!(args,
+          strict: [help: :boolean, version: :boolean],
+          aliases: [h: :help, v: :version]
+        )
 
-      if opts[:help] do
-        %__MODULE__{callback: &help/1, opts: opts, argv: argv}
-      else
-        case argv do
-          ["convert" | argv] ->
-            %__MODULE__{callback: &convert/1, opts: opts, argv: argv}
+      cond do
+        opts[:version] ->
+          %__MODULE__{callback: fn _ -> print_version() end, opts: opts, argv: argv}
 
-          ["validate" | argv] ->
-            %__MODULE__{callback: &validate/1, opts: opts, argv: argv}
+        opts[:help] ->
+          %__MODULE__{callback: &show_help/1, opts: opts, argv: argv}
 
-          _ ->
-            %__MODULE__{callback: &help/1, opts: opts, argv: argv}
-        end
+        true ->
+          case argv do
+            ["convert" | argv] ->
+              %__MODULE__{callback: &convert/1, opts: opts, argv: argv}
+
+            ["validate" | argv] ->
+              %__MODULE__{callback: &validate/1, opts: opts, argv: argv}
+
+            ["version" | _] ->
+              %__MODULE__{callback: fn _ -> print_version() end, opts: opts, argv: argv}
+
+            _ ->
+              %__MODULE__{callback: &show_help/1, opts: opts, argv: argv}
+          end
       end
     end
   end
@@ -195,6 +242,12 @@ defmodule Toml.CLI do
     do: Toml.decode_stream(stream)
 
   # Write an error to stderr and halt non-zero
+  @spec fail!(term()) :: no_return()
+  defp fail!(reason) when is_binary(reason) do
+    IO.puts(:standard_error, reason)
+    System.halt(1)
+  end
+
   defp fail!({:error, reason}) when is_binary(reason) do
     IO.puts(:standard_error, reason)
     System.halt(1)
