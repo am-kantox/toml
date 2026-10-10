@@ -50,16 +50,16 @@ jobs:
 
       - name: Verify artifacts
         run: |
-          ls -lh toml tomlex-*.ez
+          ls -lh toml tomler-*.ez
           ./toml --version
           file toml
           echo "Escript size: $(du -h toml | cut -f1)"
-          echo "Archive size: $(du -h tomlex-*.ez | cut -f1)"
+          echo "Archive size: $(du -h tomler-*.ez | cut -f1)"
 
       - name: Generate checksums
         run: |
           sha256sum toml > toml.sha256
-          sha256sum tomlex-*.ez > toml-archive.sha256
+          sha256sum tomler-*.ez > toml-archive.sha256
           cat toml.sha256
           cat toml-archive.sha256
 
@@ -90,14 +90,14 @@ jobs:
           Install directly from Hex:
 
           ```bash
-          mix archive.install hex tomlex
+          mix archive.install hex tomler
           ```
 
           Or download and install the archive:
 
           ```bash
-          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tomlex-${{ steps.version.outputs.version }}.ez
-          mix archive.install tomlex-${{ steps.version.outputs.version }}.ez
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/tomler-${{ steps.version.outputs.version }}.ez
+          mix archive.install tomler-${{ steps.version.outputs.version }}.ez
           ```
 
           ### Mix Dependency
@@ -107,7 +107,7 @@ jobs:
           ```elixir
           def deps do
             [
-              {:tomlex, "~> ${{ steps.version.outputs.version }}"}
+              {:tomler, "~> ${{ steps.version.outputs.version }}"}
             ]
           end
           ```
@@ -135,7 +135,7 @@ jobs:
 
           ## Documentation
 
-          - [API Documentation](https://hexdocs.pm/tomlex)
+          - [API Documentation](https://hexdocs.pm/tomler)
           EOF
 
       - name: Create GitHub Release
@@ -143,7 +143,7 @@ jobs:
         with:
           files: |
             toml
-            tomlex-*.ez
+            tomler-*.ez
             toml.sha256
             toml-archive.sha256
           body_path: RELEASE_NOTES.md

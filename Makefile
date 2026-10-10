@@ -13,7 +13,7 @@ build: ## Build both escript and hex archive
 	mix archive.build
 	@echo ""
 	@echo "✓ Built successfully:"
-	@ls -lh toml tomlex-*.ez
+	@ls -lh toml tomler-*.ez
 
 escript: ## Build escript only
 	mix deps.get
@@ -35,7 +35,7 @@ install-escript: escript ## Build and install escript to /usr/local/bin
 
 clean: ## Clean build artifacts
 	mix clean
-	rm -f toml tomlex-*.ez
+	rm -f toml tomler-*.ez
 	@echo "✓ Cleaned"
 
 format: ## Format code
