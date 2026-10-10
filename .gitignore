@@ -34,5 +34,7 @@ toml-*.tar
 # Dialyzer
 /.dialyzer/*.plt*
 /.dialyzer/dialyzer.plt*
+
+/.elixir-tools/
 /.ragex/
 /.yoke/

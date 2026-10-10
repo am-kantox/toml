@@ -1,5 +1,7 @@
 defmodule Toml.Error do
-  @moduledoc false
+  @moduledoc """
+  Exception raised when TOML parsing fails.
+  """
 
   defexception [:message, :reason]
 

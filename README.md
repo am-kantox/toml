@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/am-kantox/toml/v0.7.0/priv/images/logo-128.png" alt="TOML for Elixir" width="128" align="right">
+
 # TOML for Elixir
 
 [![CI](https://github.com/am-kantox/toml/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/am-kantox/toml/actions/workflows/ci.yml)

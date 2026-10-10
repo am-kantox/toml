@@ -38,7 +38,7 @@ defmodule Toml.Provider do
 
   ## Options
 
-  The same options that `Toml.parse/2` accepts are able to be provided to `Toml.Provider`,
+  The same options that `Toml.decode/2` accepts are able to be provided to `Toml.Provider`,
   but there are two main differences:
 
     * `:path` (required) - sets the path to the TOML file to load config from

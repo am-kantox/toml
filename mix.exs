@@ -30,8 +30,6 @@ defmodule Toml.MixProject do
         bench: :bench,
         "bench.decoder": :bench,
         "bench.lexer": :bench,
-        docs: :docs,
-        "hex.publish": :docs,
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
@@ -63,7 +61,9 @@ defmodule Toml.MixProject do
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README.md", "LICENSE"],
+      name: @app,
+      files:
+        ~w(lib priv/images/logo-128.png priv/images/logo-48.png .formatter.exs mix.exs README.md LICENSE),
       maintainers: ["Paul Schoenfelder", "Aleksei Matiushkin"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @source_url}
@@ -73,8 +73,10 @@ defmodule Toml.MixProject do
   defp docs do
     [
       main: "readme",
+      logo: "priv/images/logo-48.png",
+      assets: %{"priv/images" => "assets"},
       source_url: @source_url,
-      source_ref: @version,
+      source_ref: "v#{@version}",
       extras: [
         LICENSE: [title: "License"],
         "README.md": [title: "Overview"]
