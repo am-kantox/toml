@@ -2,7 +2,7 @@ defmodule Toml.MixProject do
   use Mix.Project
 
   @app :tomler
-  @version "0.7.0"
+  @version "0.8.0"
   @source_url "https://github.com/am-kantox/toml"
 
   def project do
